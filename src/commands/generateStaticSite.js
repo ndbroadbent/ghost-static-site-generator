@@ -6,6 +6,7 @@ const fetchUrlHelper = require('../helpers/fetchUrlHelper');
 const copy404PageHelper = require('../helpers/copy404PageHelper');
 const removeQueryStringsHelper = require('../helpers/removeQueryStringsHelper');
 const responsiveImagesHelper = require('../helpers/responsiveImagesHelper/responsiveImagesHelper');
+const socialImagesHelper = require('../helpers/socialImagesHelper/socialImagesHelper');
 const replaceUrlHelper = require('../helpers/replaceUrlHelper');
 const OPTIONS = require('../constants/OPTIONS');
 
@@ -50,6 +51,11 @@ const generateStaticSite = async () => {
      * Generate all missing responsive images
      */
     responsiveImagesHelper();
+
+    /**
+     * Fetch all social images (og:image, twitter:image)
+     */
+    socialImagesHelper();
 
     /**
      * Remove all query strings = file names
