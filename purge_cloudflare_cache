@@ -1,0 +1,25 @@
+#!/bin/bash
+set -e
+
+if [ -f ".cloudflare" ]; then
+  # shellcheck disable=SC1091
+  source ".cloudflare"
+fi
+if [ -z "$CLOUDFLARE_ZONE" ] || [ -z "$CLOUDFLARE_API_TOKEN" ]; then
+  echo "Please export CLOUDFLARE_ZONE and CLOUDFLARE_API_TOKEN variables (can add these to .cloudflare)"
+  exit 1
+fi
+
+if [ -n "$1" ]; then
+  echo "Purging Cloudflare cache for $1..."
+  REQUEST_DATA="{\"files\":[\"$1\"]}"
+else
+  echo "Purging Cloudflare cache for everything..."
+  REQUEST_DATA='{"purge_everything":true}'
+fi
+
+curl -X DELETE "https://api.cloudflare.com/client/v4/zones/${CLOUDFLARE_ZONE}/purge_cache" \
+-H "Authorization: Bearer ${CLOUDFLARE_API_TOKEN}" \
+-H "Content-Type: application/json" \
+--data "$REQUEST_DATA"
+echo
