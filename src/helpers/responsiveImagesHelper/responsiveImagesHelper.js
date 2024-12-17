@@ -7,44 +7,33 @@ const crawlPageAsyncHelper = require('../crawlPageAsyncHelper');
  * These are the image sizes that we want to generate
  * @type {string[]}
  */
-const imageSizes = [
-  'w100',
-  'w300',
-  'w600',
-  'w1000',
-  'w2000',
-];
+const imageSizes = ['w100', 'w300', 'w600', 'w1000', 'w2000'];
 
 const getAllFileNames = (directory) => {
   const directoryContents = fs.readdirSync(directory);
-  return directoryContents
-    .reduce((images, file) => {
-      const filePath = path.resolve(directory, file);
-      const stats = fs.lstatSync(filePath);
+  return directoryContents.reduce((images, file) => {
+    const filePath = path.resolve(directory, file);
+    const stats = fs.lstatSync(filePath);
 
-      if (stats.isDirectory()) {
-        return [
-          ...images,
-          ...getAllFileNames(filePath),
-        ];
+    if (stats.isDirectory()) {
+      return [...images, ...getAllFileNames(filePath)];
+    }
+
+    images.push(filePath);
+    imageSizes.forEach((imageSize) => {
+      const imageSizeUrl = filePath.replace(
+        'content/images/',
+        `content/images/size/${imageSize}/`,
+      );
+      // Prevent recursive calling of size images that already exist
+      if (/w[0-9]{3,5}.*w[0-9]{3,5}/g.test(imageSizeUrl)) {
+        return;
       }
+      images.push(imageSizeUrl);
+    });
 
-      images.push(filePath);
-      imageSizes
-        .forEach((imageSize) => {
-          const imageSizeUrl = filePath
-            .replace('content/images/', `content/images/size/${imageSize}/`);
-          // Prevent recursive calling of size images that already exist
-          if (
-            /w[0-9]{3,5}.*w[0-9]{3,5}/g.test(imageSizeUrl)
-          ) {
-            return;
-          }
-          images.push(imageSizeUrl);
-        });
-
-      return images;
-    }, []);
+    return images;
+  }, []);
 };
 
 /**
@@ -57,8 +46,9 @@ const responsiveImagesHelper = () => {
     `${OPTIONS.STATIC_DIRECTORY}/content`,
   );
   const allFiles = getAllFileNames(contentPath);
+  const uniqueAllFiles = [...new Set(allFiles)];
 
-  allFiles.forEach((filePath) => {
+  uniqueAllFiles.forEach((filePath) => {
     const url = filePath.replace(
       OPTIONS.ABSOLUTE_STATIC_DIRECTORY,
       OPTIONS.SOURCE_DOMAIN,
