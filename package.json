@@ -9,7 +9,14 @@
     "lint": "eslint src",
     "prepublishOnly": "npm run lint; npm run test;",
     "release": "release-it",
-    "preview": "http-server ./static"
+    "preview": "http-server ./static",
+    "ghost:setup": "cd ghost-local && npx ghost install local",
+    "ghost:start": "cd ghost-local && npx ghost start",
+    "ghost:stop": "cd ghost-local && npx ghost stop",
+    "ghost:restart": "cd ghost-local && npx ghost restart",
+    "ghost:dev": "cd ghost-local && npx ghost start --development",
+    "theme:build": "cd themes/source-featureimage && npm run build",
+    "theme:dev": "cd themes/source-featureimage && npm run dev"
   },
   "bin": {
     "gssg": "./src/index.js"
@@ -58,6 +65,7 @@
     "eslint-plugin-jsx-a11y": "^6.5.1",
     "eslint-plugin-react": "^7.28.0",
     "eslint-plugin-react-hooks": "^4.3.0",
+    "ghost-cli": "^1.26.0",
     "jest": "^27.4.6",
     "release-it": "^14.12.1"
   },

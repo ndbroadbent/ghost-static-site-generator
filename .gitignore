@@ -5,3 +5,4 @@ static
 coverage
 .cloudflare
 themes/*.zip
+ghost-local

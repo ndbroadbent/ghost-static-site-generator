@@ -69,6 +69,36 @@ production stylesheet in assets/built/screen.css
     --container-width: 1320px;
     --container-gap: clamp(24px, 1.7032rem + 1.9355vw, 48px);
     --grid-gap: 42px;
+    
+    /* Light mode colors (default) */
+    --color-bg: #fff;
+    --color-bg-secondary: #f9f9f9;
+    --color-text: #15171a;
+    --color-text-secondary: rgb(0 0 0 / 0.55);
+    --color-card-bg: #fff;
+    --color-code-bg: #f4f4f4;
+}
+
+/* Dark mode */
+[data-theme="dark"] {
+    --color-white: #1a1a1a;
+    --color-lighter-gray: rgb(255 255 255 / 0.1);
+    --color-light-gray: #333;
+    --color-mid-gray: #555;
+    --color-dark-gray: #bbb;
+    --color-darker-gray: #e4e4e4;
+    --color-black: #fff;
+    --color-primary-text: #e4e4e4;
+    --color-secondary-text: rgb(255 255 255 / 0.7);
+    --color-border: rgb(255 255 255 / 0.15);
+    --color-dark-border: rgb(255 255 255 / 0.5);
+    
+    --color-bg: #1a1a1a;
+    --color-bg-secondary: #242424;
+    --color-text: #e4e4e4;
+    --color-text-secondary: rgb(255 255 255 / 0.7);
+    --color-card-bg: #242424;
+    --color-code-bg: #2a2a2a;
 }
 
 :root.has-light-text,
@@ -134,8 +164,9 @@ h1, h2, h3, h4, h5, h6 {
 body {
     font-family: var(--gh-font-body, var(--font-sans));
     font-size: 1.6rem;
-    background-color: var(--background-color);
+    background-color: var(--color-bg);
     color: var(--color-primary-text);
+    transition: background-color 0.3s ease, color 0.3s ease;
 }
 
 h1, h2, h3, h4, h5, h6 {
@@ -487,6 +518,10 @@ button.gh-form-input {
     align-items: center;
     justify-content: flex-end;
     background-color: var(--background-color);
+}
+
+[data-theme="dark"] .gh-navigation-actions {
+    background-color: transparent;
 }
 
 .gh-navigation.has-accent-color .gh-navigation-actions {
@@ -3335,4 +3370,111 @@ figcaption a {
 
 .pswp--minimal--dark .pswp__top-bar {
     background: none;
+}
+
+/* Dark mode toggle button */
+.theme-toggle {
+    position: fixed;
+    bottom: 20px;
+    right: 20px;
+    z-index: 1000;
+    background: var(--color-darker-gray);
+    color: var(--color-white);
+    border: none;
+    border-radius: 50%;
+    width: 50px;
+    height: 50px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    box-shadow: 0 2px 10px rgba(0,0,0,0.2);
+    transition: transform 0.3s ease, background-color 0.3s ease;
+}
+
+.theme-toggle:hover {
+    transform: scale(1.1);
+}
+
+.theme-toggle svg {
+    width: 24px;
+    height: 24px;
+}
+
+.theme-toggle .sun-icon {
+    display: none;
+}
+
+.theme-toggle .moon-icon {
+    display: block;
+}
+
+[data-theme="dark"] .theme-toggle {
+    background: var(--color-light-gray);
+    color: var(--color-darker-gray);
+}
+
+[data-theme="dark"] .theme-toggle .sun-icon {
+    display: block;
+}
+
+[data-theme="dark"] .theme-toggle .moon-icon {
+    display: none;
+}
+
+/* Apply dark mode styles to cards and other elements */
+[data-theme="dark"] .gh-card,
+[data-theme="dark"] .gh-header,
+[data-theme="dark"] .gh-navigation,
+[data-theme="dark"] .gh-footer {
+    background-color: var(--color-bg-secondary);
+}
+
+[data-theme="dark"] .gh-card-link {
+    background-color: var(--color-card-bg);
+}
+
+[data-theme="dark"] .gh-card.no-image .gh-card-link {
+    padding: 24px;
+}
+
+[data-theme="dark"] pre,
+[data-theme="dark"] code {
+    background-color: var(--color-code-bg);
+}
+
+[data-theme="dark"] img {
+    opacity: 0.9;
+}
+
+[data-theme="dark"] .gh-content a {
+    color: #4a9eff;
+}
+
+[data-theme="dark"] .gh-content a:hover {
+    color: #6bb2ff;
+}
+
+/* Fix elements using --background-color */
+[data-theme="dark"] .gh-navigation-menu .nav a {
+    background-color: var(--color-bg);
+}
+
+[data-theme="dark"] .gh-author-image {
+    border-color: var(--color-bg);
+}
+
+[data-theme="dark"] .kg-bookmark-card a.kg-bookmark-container,
+[data-theme="dark"] .kg-bookmark-card a.kg-bookmark-container:hover {
+    background: var(--color-card-bg) !important;
+}
+
+/* Fix form inputs in dark mode */
+[data-theme="dark"] .gh-form-input {
+    color: var(--color-text);
+}
+
+[data-theme="dark"] .gh-form-input::placeholder {
+    color: rgb(255 255 255 / 0.5);
+    opacity: 1;
 }
