@@ -3422,8 +3422,7 @@ figcaption a {
     display: none;
 }
 
-/* Apply dark mode styles to cards and other elements */
-[data-theme="dark"] .gh-card,
+/* Apply dark mode styles to other elements */
 [data-theme="dark"] .gh-header,
 [data-theme="dark"] .gh-navigation,
 [data-theme="dark"] .gh-footer {
@@ -3431,11 +3430,7 @@ figcaption a {
 }
 
 [data-theme="dark"] .gh-card-link {
-    background-color: var(--color-card-bg);
-}
-
-[data-theme="dark"] .gh-card.no-image .gh-card-link {
-    padding: 24px;
+    background-color: transparent;
 }
 
 [data-theme="dark"] pre,
@@ -3477,4 +3472,9 @@ figcaption a {
 [data-theme="dark"] .gh-form-input::placeholder {
     color: rgb(255 255 255 / 0.5);
     opacity: 1;
+}
+
+/* Remove footer bar top border in dark mode */
+[data-theme="dark"] .gh-footer-bar {
+    border-top: none;
 }

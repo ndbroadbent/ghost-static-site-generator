@@ -27,7 +27,11 @@
     <script>
         /* Dark mode initialization - runs before page render to prevent flash */
         (function() {
-            var theme = localStorage.getItem('theme') || 'light';
+            var theme = localStorage.getItem('theme');
+            if (!theme) {
+                // Check system preference if no saved preference
+                theme = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+            }
             document.documentElement.setAttribute('data-theme', theme);
         })();
         
