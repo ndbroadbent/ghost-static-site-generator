@@ -5,7 +5,7 @@ const OPTIONS = require('../src/constants/OPTIONS');
 const socialImagesHelper = require('../src/helpers/socialImagesHelper/socialImagesHelper');
 
 const TEST_URL =
-  'https://blog.ndbroadbent.com/2025/03/22/home-automation-highlights/';
+  'https://blog.home.ndbroadbent.com/2025/03/22/home-automation-highlights/';
 const TEST_DIR = path.join(process.cwd(), 'test-static');
 
 async function main() {
@@ -21,7 +21,7 @@ async function main() {
 
     // Override OPTIONS for testing
     OPTIONS.STATIC_DIRECTORY = TEST_DIR;
-    OPTIONS.SOURCE_DOMAIN = 'https://blog.ndbroadbent.com';
+    OPTIONS.SOURCE_DOMAIN = 'https://blog.home.ndbroadbent.com';
 
     // Download the test page
     console.log('Downloading test page...');
