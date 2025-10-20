@@ -1,12 +1,10 @@
-/**
- * Cloudflare Worker to proxy Plausible Analytics
- *
- * This proxies requests to Plausible to avoid ad blockers
- * - /js/script.js -> Plausible script (with extensions support)
- * - /api/event -> Plausible event endpoint
- */
+// Cloudflare Worker to proxy Plausible Analytics
+//
+// This proxies requests to Plausible to avoid ad blockers
+// - /main.js -> Plausible script (with extensions support)
+// - /api/event -> Plausible event endpoint
 
-const ProxyScript = 'https://plausible.io/js/pa-BcRrHMb-WDJL_dgiM5A81.js';
+const ProxyScript = 'https://plausible.io/js/pa-oTzvUy5XgguXkDOPcba0G.js';
 const ScriptName = '/main.js';
 const Endpoint = '/api/event';
 
