@@ -7,12 +7,12 @@
  */
 
 const ProxyScript = 'https://plausible.io/js/pa-BcRrHMb-WDJL_dgiM5A81.js';
-const ScriptName = '/js/script.js';
+const ScriptName = '/main.js';
 const Endpoint = '/api/event';
 
 const ScriptWithoutExtension = ScriptName.replace('.js', '');
 
-addEventListener('fetch', event => {
+addEventListener('fetch', (event) => {
   event.passThroughOnException();
   event.respondWith(handleRequest(event));
 });
