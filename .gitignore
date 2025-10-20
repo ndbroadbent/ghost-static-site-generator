@@ -6,3 +6,4 @@ coverage
 .cloudflare
 themes/*.zip
 ghost-local
+workers/**/.wrangler

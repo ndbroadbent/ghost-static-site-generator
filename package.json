@@ -16,7 +16,10 @@
     "ghost:restart": "cd ghost-local && npx ghost restart",
     "ghost:dev": "cd ghost-local && npx ghost start --development",
     "theme:build": "cd themes/source-featureimage && npm run build",
-    "theme:dev": "cd themes/source-featureimage && npm run dev"
+    "theme:dev": "cd themes/source-featureimage && npm run dev",
+    "worker:deploy": "cd workers/plausible-proxy && wrangler deploy",
+    "worker:dev": "cd workers/plausible-proxy && wrangler dev",
+    "worker:tail": "cd workers/plausible-proxy && wrangler tail"
   },
   "bin": {
     "gssg": "./src/index.js"
