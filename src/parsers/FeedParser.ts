@@ -191,6 +191,26 @@ export class FeedParser {
       }
     }
 
+    // Match meta tag content (og:image, twitter:image, etc.)
+    const metaRegex = /<meta[^>]+content=["']([^"']+)["']/g;
+    while ((match = metaRegex.exec(htmlContent)) !== null) {
+      const url = match[1];
+
+      // Skip non-URL content
+      if (!url.startsWith('http://') && !url.startsWith('https://') && !url.startsWith('/')) {
+        continue;
+      }
+
+      try {
+        const absoluteUrl = new URL(url, baseUrl).href;
+        if (absoluteUrl.startsWith(baseUrl)) {
+          urls.add(absoluteUrl);
+        }
+      } catch (error) {
+        // Invalid URL, skip
+      }
+    }
+
     return Array.from(urls);
   }
 }

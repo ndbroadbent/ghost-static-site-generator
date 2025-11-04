@@ -4,8 +4,6 @@ import { CacheManager } from '../cache/CacheManager';
 import { GraphCache } from '../cache/GraphCache';
 import { SmartFetcher } from '../fetchers/SmartFetcher';
 import { ConcurrentCrawler } from '../crawlers/ConcurrentCrawler';
-const responsiveImagesHelper = require('../helpers/responsiveImagesHelper/responsiveImagesHelper');
-const socialImagesHelper = require('../helpers/socialImagesHelper/socialImagesHelper');
 
 const OPTIONS = require('../constants/OPTIONS');
 const copy404PageHelper = require('../helpers/copy404PageHelper');
