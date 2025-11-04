@@ -1,7 +1,7 @@
 #!/bin/bash
 set -e
 
-rm -rf static/*
+# rm -rf static/*
 ./fetch.sh
 
 (

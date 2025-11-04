@@ -1,6 +1,16 @@
 #!/usr/bin/env node
-const generateStaticSite = require('./commands/generateStaticSite');
+require('ts-node').register({
+  transpileOnly: true,
+  compilerOptions: {
+    module: 'commonjs'
+  }
+});
+
+const generateStaticSite = require('./commands/generateStaticSite.ts');
 
 console.time('Site generated in');
 
-generateStaticSite();
+generateStaticSite().catch(error => {
+  console.error('Fatal error:', error);
+  process.exit(1);
+});

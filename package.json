@@ -7,6 +7,8 @@
     "test": "jest --coverage",
     "start": "http-server ./static -o",
     "lint": "eslint src",
+    "build": "tsc",
+    "build:watch": "tsc --watch",
     "prepublishOnly": "npm run lint; npm run test;",
     "release": "release-it",
     "preview": "http-server ./static",
@@ -51,13 +53,22 @@
     "regenerator-runtime": "^0.14.1",
     "wget-improved": "^3.2.1",
     "xml2js": "^0.4.19",
-    "yargs": "^17.3.1"
+    "yargs": "^17.3.1",
+    "p-limit": "^3.1.0",
+    "fast-xml-parser": "^4.3.2",
+    "node-fetch": "^2.7.0"
   },
   "devDependencies": {
     "@babel/core": "^7.1.2",
     "@babel/preset-env": "^7.1.0",
     "@babel/register": "^7.0.0",
     "@types/jest": "^27.4.0",
+    "@types/node": "^18.0.0",
+    "@types/lodash": "^4.14.191",
+    "@types/node-fetch": "^2.6.2",
+    "@types/yargs": "^17.0.24",
+    "@types/mkdirp": "^1.0.2",
+    "@types/p-limit": "^2.2.0",
     "babel-core": "^6.26.3",
     "babel-eslint": "^10.0.1",
     "babel-jest": "^27.4.6",
@@ -70,7 +81,10 @@
     "eslint-plugin-react-hooks": "^4.3.0",
     "ghost-cli": "^1.26.0",
     "jest": "^27.4.6",
-    "release-it": "^14.12.1"
+    "release-it": "^14.12.1",
+    "typescript": "^5.0.0",
+    "ts-node": "^10.9.1",
+    "ts-jest": "^29.1.0"
   },
   "resolutions": {
     "boom": "^7.3.0"

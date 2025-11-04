@@ -7,3 +7,5 @@ coverage
 themes/*.zip
 ghost-local
 workers/**/.wrangler
+.gssg-cache/
+dist/

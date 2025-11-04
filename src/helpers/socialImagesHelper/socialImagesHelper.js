@@ -76,6 +76,12 @@ const processSocialImage = async (originalUrl) => {
 
   if (crawlHistory.has(imageUrl)) return;
 
+  // Skip external URLs (only download images hosted on our domain)
+  if (!imageUrl.startsWith(OPTIONS.SOURCE_DOMAIN)) {
+    console.log(`Skipping external social image: ${imageUrl}`);
+    return;
+  }
+
   // Fetch the image
   crawlPageAsyncHelper(imageUrl);
   crawlHistory.add(imageUrl);
