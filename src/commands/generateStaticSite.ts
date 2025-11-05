@@ -73,6 +73,10 @@ async function generateStaticSite(): Promise<void> {
       `${OPTIONS.SOURCE_DOMAIN}/public/ghost.min.css`,
     ];
 
+    // Register all known valid URLs (from sitemap + explicit list) before crawling
+    // This prevents the crawler from deleting files that are valid but not linked
+    crawler.registerKnownValidUrls([...explicitUrls, ...sitemapUrls]);
+
     // Start crawl from root - will recursively discover and crawl everything
     await crawler.crawl(`${OPTIONS.SOURCE_DOMAIN}/`);
 

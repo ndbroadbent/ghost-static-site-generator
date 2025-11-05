@@ -37,6 +37,9 @@ export class ConcurrentCrawler {
   private expectedRemovals = new Set<string>();
   private errorLock = Promise.resolve();
 
+  // Track known valid URLs (from sitemap, explicitly provided, etc.)
+  private knownValidUrls = new Set<string>();
+
   constructor(
     fetcher: SmartFetcher,
     graphCache: GraphCache,
@@ -133,6 +136,12 @@ export class ConcurrentCrawler {
   private async markAsRemoved(urls: string[]): Promise<void> {
     this.errorLock = this.errorLock.then(async () => {
       urls.forEach((url) => {
+        // Don't delete files that are known to be valid (in sitemap, etc.)
+        if (this.knownValidUrls.has(url)) {
+          console.log(`  ⚠️  Link removed but URL is in sitemap, keeping: ${url}`);
+          return;
+        }
+
         this.expectedRemovals.add(url);
 
         // Delete the file from disk
@@ -422,6 +431,11 @@ export class ConcurrentCrawler {
     }
 
     return allUrls;
+  }
+
+  public registerKnownValidUrls(urls: string[]): void {
+    console.log(`Registering ${urls.length} known valid URLs from sitemap/explicit list\n`);
+    urls.forEach(url => this.knownValidUrls.add(url));
   }
 
   public async crawlAdditionalUrls(urls: string[]): Promise<void> {
