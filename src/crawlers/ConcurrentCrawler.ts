@@ -110,6 +110,21 @@ export class ConcurrentCrawler {
     return false;
   }
 
+  private isRSSFeed(filePath: string): boolean {
+    return filePath.includes('/rss/') || filePath.endsWith('/rss');
+  }
+
+  private normalizeRSSContent(content: string): string {
+    // Remove lastBuildDate tag which changes on every build even when content is the same
+    let normalized = content.replace(/<lastBuildDate>.*?<\/lastBuildDate>/g, '<lastBuildDate></lastBuildDate>');
+
+    // Normalize domain differences (blog.home.ndbroadbent.com vs madebynathan.com)
+    normalized = normalized.replace(/https:\/\/blog\.home\.ndbroadbent\.com/g, 'DOMAIN');
+    normalized = normalized.replace(/https:\/\/madebynathan\.com/g, 'DOMAIN');
+
+    return normalized;
+  }
+
   private async addError(error: CrawlError): Promise<void> {
     // Mutex-like behavior using promise chaining
     this.errorLock = this.errorLock.then(async () => {
@@ -262,10 +277,27 @@ export class ConcurrentCrawler {
           fs.mkdirSync(dir, { recursive: true });
         }
 
-        if (Buffer.isBuffer(result.content)) {
-          fs.writeFileSync(outputPath, result.content);
-        } else {
-          fs.writeFileSync(outputPath, result.content, 'utf8');
+        // Special handling for RSS feeds - check if only timestamp changed
+        let shouldSkipWrite = false;
+        if (this.isRSSFeed(outputPath) && typeof result.content === 'string') {
+          if (fs.existsSync(outputPath)) {
+            const existingContent = fs.readFileSync(outputPath, 'utf8');
+            const normalizedNew = this.normalizeRSSContent(result.content);
+            const normalizedExisting = this.normalizeRSSContent(existingContent);
+
+            if (normalizedNew === normalizedExisting) {
+              console.log(`  ⊘ RSS content unchanged (only timestamp differs), skipping write`);
+              shouldSkipWrite = true;
+            }
+          }
+        }
+
+        if (!shouldSkipWrite) {
+          if (Buffer.isBuffer(result.content)) {
+            fs.writeFileSync(outputPath, result.content);
+          } else {
+            fs.writeFileSync(outputPath, result.content, 'utf8');
+          }
         }
 
         // Parse content to extract links

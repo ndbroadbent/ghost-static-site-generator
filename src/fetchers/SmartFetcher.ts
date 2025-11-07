@@ -128,6 +128,20 @@ export class SmartFetcher {
         fs.mkdirSync(dir, { recursive: true });
       }
 
+      // Special handling for RSS feeds - normalize and compare to avoid timestamp-only changes
+      if (this.isRSSFeed(outputPath) && typeof result.content === 'string') {
+        if (fs.existsSync(outputPath)) {
+          const existingContent = fs.readFileSync(outputPath, 'utf8');
+          const normalizedNew = this.normalizeRSSContent(result.content);
+          const normalizedExisting = this.normalizeRSSContent(existingContent);
+
+          if (normalizedNew === normalizedExisting) {
+            console.log(`  ⊘ RSS content unchanged (only timestamp differs), skipping write`);
+            return false;
+          }
+        }
+      }
+
       if (Buffer.isBuffer(result.content)) {
         fs.writeFileSync(outputPath, result.content);
       } else {
@@ -187,6 +201,15 @@ export class SmartFetcher {
       '.tar',
       '.gz',
     ].includes(ext);
+  }
+
+  private isRSSFeed(filePath: string): boolean {
+    return filePath.includes('/rss/') || filePath.endsWith('/rss');
+  }
+
+  private normalizeRSSContent(content: string): string {
+    // Remove lastBuildDate tag which changes on every build even when content is the same
+    return content.replace(/<lastBuildDate>.*?<\/lastBuildDate>/g, '<lastBuildDate></lastBuildDate>');
   }
 
   public getStats() {
