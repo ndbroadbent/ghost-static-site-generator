@@ -11,4 +11,4 @@ set -e
   git push origin gh-pages
 )
 
-./purge_cloudflare_cache
+# ./purge_cloudflare_cache
