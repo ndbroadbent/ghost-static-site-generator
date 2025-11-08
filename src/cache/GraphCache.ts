@@ -35,7 +35,7 @@ export class GraphCache {
     }
 
     return {
-      version: '1.0.0',
+      version: '2.0.0',
       lastUpdated: new Date().toISOString(),
       nodes: {},
     };
@@ -64,7 +64,49 @@ export class GraphCache {
     this.modified = true;
   }
 
-  public getAllUrls(): string[] {
+  public getAllNodesMap(): Record<string, GraphNode> {
+    return { ...this.manifest.nodes };
+  }
+
+  /**
+   * Build the complete DAG from all nodes.
+   * Returns a Set of all URLs that are referenced (directly or transitively)
+   * from the given entry points.
+   */
+  public buildDAG(entryUrls: string[]): Set<string> {
+    const reachable = new Set<string>();
+    const queue = [...entryUrls];
+    const visited = new Set<string>();
+
+    while (queue.length > 0) {
+      const url = queue.shift()!;
+
+      if (visited.has(url)) {
+        continue;
+      }
+
+      visited.add(url);
+      reachable.add(url);
+
+      const node = this.getNode(url);
+      if (node) {
+        // Add all children to queue
+        [...node.outLinks, ...node.resources].forEach(childUrl => {
+          if (!visited.has(childUrl)) {
+            queue.push(childUrl);
+          }
+        });
+      }
+    }
+
+    return reachable;
+  }
+
+  /**
+   * Get all URLs that appear anywhere in the graph.
+   * This includes nodes themselves and all their outLinks and resources.
+   */
+  public getAllReferencedUrls(): Set<string> {
     const urls = new Set<string>();
 
     // Collect all URLs from nodes
@@ -74,7 +116,7 @@ export class GraphCache {
       node.resources.forEach(resource => urls.add(resource));
     }
 
-    return Array.from(urls);
+    return urls;
   }
 
   public getChildUrls(url: string): string[] {
@@ -117,5 +159,12 @@ export class GraphCache {
       totalResources: nodes.reduce((sum, n) => sum + n.resources.length, 0),
     };
   }
-}
 
+  /**
+   * Clear all nodes - used for starting fresh while preserving structure
+   */
+  public clearAllNodes(): void {
+    this.manifest.nodes = {};
+    this.modified = true;
+  }
+}

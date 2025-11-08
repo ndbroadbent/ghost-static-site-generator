@@ -32,13 +32,14 @@ export class ConcurrentCrawler {
   private inProgress = new Set<string>();
   private queue = new Set<string>();
 
-  // Error tracking with mutex simulation (JS is single-threaded but async)
+  // Error tracking
   private errors: CrawlError[] = [];
-  private expectedRemovals = new Set<string>();
-  private errorLock = Promise.resolve();
 
   // Track known valid URLs (from sitemap, explicitly provided, etc.)
   private knownValidUrls = new Set<string>();
+
+  // New graph for this crawl session
+  private newGraph = new Map<string, { outLinks: string[]; resources: string[] }>();
 
   constructor(
     fetcher: SmartFetcher,
@@ -114,6 +115,23 @@ export class ConcurrentCrawler {
     return filePath.includes('/rss/') || filePath.endsWith('/rss');
   }
 
+  private isVideoUrl(url: string): boolean {
+    const videoExtensions = ['.mp4', '.mov', '.webm', '.avi', '.mkv'];
+    const urlPath = new URL(url).pathname.toLowerCase();
+    return videoExtensions.some(ext => urlPath.endsWith(ext));
+  }
+
+  private getVideoThumbnailUrl(videoUrl: string): string {
+    // Ghost generates thumbnails with _thumb.jpg suffix
+    // e.g., video.mp4 -> video_thumb.jpg
+    const url = new URL(videoUrl);
+    const pathname = url.pathname;
+    const lastDot = pathname.lastIndexOf('.');
+    const basePath = pathname.substring(0, lastDot);
+    const thumbnailPath = `${basePath}_thumb.jpg`;
+    return `${url.origin}${thumbnailPath}`;
+  }
+
   private normalizeRSSContent(content: string): string {
     // Remove lastBuildDate tag which changes on every build even when content is the same
     let normalized = content.replace(/<lastBuildDate>.*?<\/lastBuildDate>/g, '<lastBuildDate></lastBuildDate>');
@@ -125,77 +143,16 @@ export class ConcurrentCrawler {
     return normalized;
   }
 
-  private async addError(error: CrawlError): Promise<void> {
-    // Mutex-like behavior using promise chaining
-    this.errorLock = this.errorLock.then(async () => {
-      // Check if this is an expected removal
-      if (this.expectedRemovals.has(error.url)) {
-        console.log(`  ℹ️  Expected 404 (removed from parent): ${error.url}`);
-        this.expectedRemovals.delete(error.url);
-        return;
-      }
+  private addError(error: CrawlError): void {
+    // Check allowlist
+    if (
+      this.options.allowlist404.some((pattern) => error.url.includes(pattern))
+    ) {
+      console.log(`  ℹ️  Allowlisted 404: ${error.url}`);
+      return;
+    }
 
-      // Check allowlist
-      if (
-        this.options.allowlist404.some((pattern) => error.url.includes(pattern))
-      ) {
-        console.log(`  ℹ️  Allowlisted 404: ${error.url}`);
-        return;
-      }
-
-      this.errors.push(error);
-    });
-    await this.errorLock;
-  }
-
-  private async markAsRemoved(urls: string[]): Promise<void> {
-    this.errorLock = this.errorLock.then(async () => {
-      urls.forEach((url) => {
-        // Don't delete files that are known to be valid (in sitemap, etc.)
-        if (this.knownValidUrls.has(url)) {
-          console.log(`  ⚠️  Link removed but URL is in sitemap, keeping: ${url}`);
-          return;
-        }
-
-        this.expectedRemovals.add(url);
-
-        // Delete the file from disk
-        const filePath = this.urlToFilePath(url);
-        if (fs.existsSync(filePath)) {
-          try {
-            fs.unlinkSync(filePath);
-            console.log(`  🗑️  Deleted removed file: ${filePath}`);
-          } catch (error) {
-            console.error(`  ✗ Failed to delete ${filePath}:`, error);
-          }
-        }
-
-        // Remove from graph cache
-        this.graphCache.removeNode(url);
-
-        // Remove from ETag cache
-        this.fetcher['cacheManager'].clearEntry(url);
-      });
-    });
-    await this.errorLock;
-  }
-
-  private diffLinks(
-    oldLinks: string[],
-    newLinks: string[],
-  ): {
-    added: string[];
-    removed: string[];
-    unchanged: string[];
-  } {
-    const oldSet = new Set(oldLinks);
-    const newSet = new Set(newLinks);
-
-    const added = newLinks.filter((link) => !oldSet.has(link));
-    const removed = oldLinks.filter((link) => !newSet.has(link));
-    const unchanged = newLinks.filter((link) => oldSet.has(link));
-
-    return { added, removed, unchanged };
+    this.errors.push(error);
   }
 
   private async crawlUrl(url: string, referrer?: string): Promise<void> {
@@ -212,7 +169,7 @@ export class ConcurrentCrawler {
 
       // Handle errors
       if (result.status === 404) {
-        await this.addError({
+        this.addError({
           url,
           status: 404,
           referrer,
@@ -224,7 +181,7 @@ export class ConcurrentCrawler {
       }
 
       if (result.status !== 200 && result.status !== 304) {
-        await this.addError({
+        this.addError({
           url,
           status: result.status,
           referrer,
@@ -262,6 +219,12 @@ export class ConcurrentCrawler {
         console.log(`  ✓ Using cached links for ${url}`);
 
         if (oldNode) {
+          // Reuse old node's links for the new graph
+          this.newGraph.set(url, {
+            outLinks: oldNode.outLinks,
+            resources: oldNode.resources,
+          });
+
           // Add all child URLs to queue
           const childUrls = this.graphCache.getChildUrls(url);
           childUrls.forEach((childUrl) => {
@@ -320,6 +283,12 @@ export class ConcurrentCrawler {
               outLinks.push(link);
             } else {
               resources.push(link);
+
+              // For video files, also fetch the thumbnail that Ghost generates
+              if (this.isVideoUrl(link)) {
+                const thumbnailUrl = this.getVideoThumbnailUrl(link);
+                resources.push(thumbnailUrl);
+              }
             }
           }
         } else if (this.isCssContent(result.contentType, url)) {
@@ -333,23 +302,28 @@ export class ConcurrentCrawler {
           }
         }
 
-        // Diff with old node if it exists
+        // Store in new graph
+        this.newGraph.set(url, {
+          outLinks: Array.from(new Set(outLinks)),
+          resources: Array.from(new Set(resources)),
+        });
+
+        // Report changes if there was an old node
         if (oldNode) {
           const oldAllLinks = [...oldNode.outLinks, ...oldNode.resources];
           const newAllLinks = [...outLinks, ...resources];
-          const diff = this.diffLinks(oldAllLinks, newAllLinks);
+          const oldSet = new Set(oldAllLinks);
+          const newSet = new Set(newAllLinks);
+          const added = newAllLinks.filter(link => !oldSet.has(link));
+          const removed = oldAllLinks.filter(link => !newSet.has(link));
 
-          if (diff.added.length > 0) {
-            console.log(`  + Added ${diff.added.length} links`);
+          if (added.length > 0) {
+            console.log(`  + Added ${added.length} links`);
           }
-          if (diff.removed.length > 0) {
-            console.log(`  - Removed ${diff.removed.length} links`);
-            await this.markAsRemoved(diff.removed);
+          if (removed.length > 0) {
+            console.log(`  - Removed ${removed.length} links`);
           }
         }
-
-        // Update graph
-        this.graphCache.setNode(url, outLinks, resources);
 
         // Add new links to queue
         [...outLinks, ...resources].forEach((link) => {
@@ -362,7 +336,7 @@ export class ConcurrentCrawler {
       this.crawled.add(url);
     } catch (error) {
       console.error(`  ✗ Error crawling ${url}:`, error);
-      await this.addError({
+      this.addError({
         url,
         status: 0,
         referrer,
@@ -404,12 +378,6 @@ export class ConcurrentCrawler {
     }
 
     console.log(`\n✓ Crawled ${this.crawled.size} total URLs\n`);
-
-    // Save graph
-    this.graphCache.save();
-
-    // Wait for all error processing to complete
-    await this.errorLock;
 
     // Final error report
     if (this.errors.length > 0) {
@@ -500,6 +468,154 @@ export class ConcurrentCrawler {
     }
 
     console.log(`\n✓ Crawled ${uncrawled.length} additional URLs\n`);
+  }
+
+  /**
+   * After crawling is complete, update the graph cache with the new graph
+   * and clean up files that are no longer referenced.
+   */
+  public async finalizeAndCleanup(): Promise<void> {
+    console.log('\n=== Finalizing Graph and Cleaning Up ===\n');
+
+    // Update graph cache with new graph
+    console.log(`Updating graph cache with ${this.newGraph.size} nodes...`);
+    for (const [url, { outLinks, resources }] of this.newGraph.entries()) {
+      this.graphCache.setNode(url, outLinks, resources);
+    }
+
+    // Build DAG from all entry points (known valid URLs)
+    const entryPoints = Array.from(this.knownValidUrls);
+    console.log(`Building DAG from ${entryPoints.length} entry points...`);
+    const reachableUrls = this.graphCache.buildDAG(entryPoints);
+    console.log(`DAG contains ${reachableUrls.size} reachable URLs (including all resources)\n`);
+
+    // Find all files in static directory
+    const staticFiles = this.findAllStaticFiles(this.options.staticDir);
+    console.log(`Found ${staticFiles.length} files in static directory`);
+
+    // Convert files to URLs
+    const fileUrls = new Set(
+      staticFiles
+        .map(filePath => this.filePathToUrl(filePath))
+        .filter(url => url !== null) as string[]
+    );
+
+    // Find files that should be deleted (not in DAG)
+    const filesToDelete: string[] = [];
+    for (const fileUrl of fileUrls) {
+      if (!reachableUrls.has(fileUrl)) {
+        filesToDelete.push(this.urlToFilePath(fileUrl));
+      }
+    }
+
+    // Delete unreachable files
+    if (filesToDelete.length > 0) {
+      console.log(`\nDeleting ${filesToDelete.length} unreachable files:\n`);
+      for (const filePath of filesToDelete) {
+        try {
+          fs.unlinkSync(filePath);
+          console.log(`  🗑️  Deleted: ${filePath}`);
+
+          // Try to remove empty parent directories
+          this.removeEmptyParentDirs(filePath, this.options.staticDir);
+        } catch (error) {
+          console.error(`  ✗ Failed to delete ${filePath}:`, error);
+        }
+      }
+    } else {
+      console.log('No unreachable files to delete\n');
+    }
+
+    // Save updated graph
+    this.graphCache.save();
+  }
+
+  private findAllStaticFiles(dir: string): string[] {
+    const files: string[] = [];
+
+    const traverse = (currentDir: string) => {
+      const entries = fs.readdirSync(currentDir, { withFileTypes: true });
+
+      for (const entry of entries) {
+        const fullPath = path.join(currentDir, entry.name);
+
+        if (entry.isDirectory()) {
+          traverse(fullPath);
+        } else if (entry.isFile()) {
+          files.push(fullPath);
+        }
+      }
+    };
+
+    if (fs.existsSync(dir)) {
+      traverse(dir);
+    }
+
+    return files;
+  }
+
+  private filePathToUrl(filePath: string): string | null {
+    try {
+      // Get relative path from static directory
+      const relativePath = path.relative(this.options.staticDir, filePath);
+
+      // Skip certain files/directories that aren't part of the crawl
+      // These are added by post-processing steps or are special files
+      if (
+        relativePath === 'CNAME' ||
+        relativePath === '404.html' ||
+        relativePath.startsWith('sudoblock/') ||
+        relativePath.startsWith('.git/') ||
+        relativePath.startsWith('logs/') ||
+        relativePath.startsWith('content/files/2024/12/deskew') ||
+        (relativePath.endsWith('.txt') && !relativePath.includes('/'))
+      ) {
+        return null;
+      }
+
+      let urlPath = relativePath;
+
+      // Convert /index.html to / (with trailing slash for consistency with Ghost URLs)
+      if (urlPath.endsWith('/index.html')) {
+        urlPath = urlPath.substring(0, urlPath.length - 10); // Remove 'index.html', keep trailing /
+      } else if (urlPath === 'index.html') {
+        urlPath = '/';
+      }
+
+      // Ensure leading slash
+      if (!urlPath.startsWith('/')) {
+        urlPath = '/' + urlPath;
+      }
+
+      // Ensure trailing slash for directory-like URLs (Ghost convention)
+      if (!urlPath.endsWith('/') && !path.extname(urlPath)) {
+        urlPath += '/';
+      }
+
+      return `${this.options.sourceDomain}${urlPath}`;
+    } catch (error) {
+      console.error(`Failed to convert file path to URL: ${filePath}`, error);
+      return null;
+    }
+  }
+
+  private removeEmptyParentDirs(filePath: string, rootDir: string): void {
+    let dir = path.dirname(filePath);
+
+    while (dir !== rootDir && dir.startsWith(rootDir)) {
+      try {
+        const entries = fs.readdirSync(dir);
+        if (entries.length === 0) {
+          fs.rmdirSync(dir);
+          console.log(`  🗑️  Removed empty directory: ${dir}`);
+          dir = path.dirname(dir);
+        } else {
+          break;
+        }
+      } catch (error) {
+        break;
+      }
+    }
   }
 
   public getStats() {
