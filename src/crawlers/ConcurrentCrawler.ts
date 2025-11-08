@@ -85,6 +85,14 @@ export class ConcurrentCrawler {
       pathname += '/index.html';
     }
 
+    // Handle query string versioning (e.g., screen.css?v=abc123 -> screen.abc123.css)
+    if (urlObj.search && urlObj.searchParams.has('v')) {
+      const version = urlObj.searchParams.get('v');
+      const ext = path.extname(pathname);
+      const base = pathname.substring(0, pathname.length - ext.length);
+      pathname = `${base}.${version}${ext}`;
+    }
+
     return path.join(this.options.staticDir, pathname);
   }
 
@@ -564,16 +572,37 @@ export class ConcurrentCrawler {
       if (
         relativePath === 'CNAME' ||
         relativePath === '404.html' ||
+        relativePath === '.DS_Store' ||
+        relativePath === '.gitignore' ||
+        relativePath === 'content/files/2024/12/deskew' || // Binary file, not a directory
         relativePath.startsWith('sudoblock/') ||
         relativePath.startsWith('.git/') ||
         relativePath.startsWith('logs/') ||
-        relativePath.startsWith('content/files/2024/12/deskew') ||
-        (relativePath.endsWith('.txt') && !relativePath.includes('/'))
+        (relativePath.endsWith('.txt') && !relativePath.includes('/')) ||
+        relativePath.includes('/.') // Skip all hidden files/directories
       ) {
         return null;
       }
 
       let urlPath = relativePath;
+
+      // Convert versioned filenames back to query strings
+      // e.g., screen.abc123.css -> screen.css?v=abc123
+      const ext = path.extname(urlPath);
+      if (ext) {
+        const baseName = path.basename(urlPath, ext);
+        const versionMatch = baseName.match(/^(.+)\.([a-f0-9]+)$/);
+        if (versionMatch) {
+          const actualBase = versionMatch[1];
+          const version = versionMatch[2];
+          const dir = path.dirname(urlPath);
+          urlPath = path.join(dir, `${actualBase}${ext}`);
+
+          // Add version as query string
+          const url = `${this.options.sourceDomain}/${urlPath}?v=${version}`;
+          return url;
+        }
+      }
 
       // Convert /index.html to / (with trailing slash for consistency with Ghost URLs)
       if (urlPath.endsWith('/index.html')) {

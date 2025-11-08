@@ -3,17 +3,23 @@ set -e
 
 if ! [ -d "static" ]; then
   git clone git@github.com:ndbroadbent/ndbroadbent.github.io.git static
+  cd static
   git checkout gh-pages
+  cd ..
 fi
 node src/index.js --domain https://blog.home.ndbroadbent.com --productionDomain https://madebynathan.com
-
-# Replace all remaining instances of https://blog.home.ndbroadbent.com with https://madebynathan.com in static files
-grep -rl "https://blog.home.ndbroadbent.com" --include \*.html static | xargs sed -i '' 's/https:\/\/blog.home.ndbroadbent.com/https:\/\/madebynathan.com/g'
-
-# Hack to fix deskew file which isn't getting downloaded for some reason
-mkdir -p static/content/files/2024/12
-cp files/deskew static/content/files/2024/12/
 
 echo madebynathan.com > static/CNAME
 cp pubkey_38E63C0A.txt static/
 cp -R sudoblock static/
+
+# Smoke test: ensure no blog.home.ndbroadbent.com references remain
+echo "Running smoke test for remaining blog.home.ndbroadbent.com references..."
+if rg -q "blog\.home\.ndbroadbent" static; then
+  echo "❌ ERROR: Found remaining blog.home.ndbroadbent.com references:"
+  rg "blog\.home\.ndbroadbent" static -l | head -20
+  exit 1
+else
+  echo "✓ Smoke test passed: no blog.home.ndbroadbent.com references found"
+fi
+

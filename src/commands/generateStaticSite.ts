@@ -7,7 +7,7 @@ import { ConcurrentCrawler } from '../crawlers/ConcurrentCrawler';
 
 const OPTIONS = require('../constants/OPTIONS');
 const copy404PageHelper = require('../helpers/copy404PageHelper');
-const removeQueryStringsHelper = require('../helpers/removeQueryStringsHelper');
+const normalizeVersionedUrls = require('../helpers/normalizeVersionedUrls');
 const replaceUrlHelper = require('../helpers/replaceUrlHelper');
 const { argv } = require('yargs');
 const previewGeneratedSite = require('./previewGeneratedSite');
@@ -99,12 +99,39 @@ async function generateStaticSite(): Promise<void> {
     // Copy 404 page
     await copy404PageHelper();
 
-    // Remove query strings from filenames
-    removeQueryStringsHelper(absoluteStaticPath);
+    // Normalize versioned URLs (file.css?v=abc -> file.abc.css)
+    normalizeVersionedUrls(absoluteStaticPath);
 
     // Replace URLs if specified
     if (argv.url && !argv.preview) {
       replaceUrlHelper(absoluteStaticPath, /\.(html|xml|xsl|txt|js)/, argv.url);
+    }
+
+    // Ensure ALL instances of source domain are replaced with production domain
+    if (argv.productionDomain) {
+      console.log(`Replacing all blog.home.ndbroadbent.com with madebynathan.com...\n`);
+
+      const replaceInFile = (filePath: string) => {
+        const content = fs.readFileSync(filePath, 'utf8');
+        const replaced = content.replace(/blog\.home\.ndbroadbent\.com/g, 'madebynathan.com');
+        if (content !== replaced) {
+          fs.writeFileSync(filePath, replaced, 'utf8');
+        }
+      };
+
+      const processDirectory = (dir: string) => {
+        const entries = fs.readdirSync(dir, { withFileTypes: true });
+        for (const entry of entries) {
+          const fullPath = path.join(dir, entry.name);
+          if (entry.isDirectory()) {
+            processDirectory(fullPath);
+          } else if (entry.isFile() && /\.(html|xml|xsl|txt|js|css)$/.test(entry.name)) {
+            replaceInFile(fullPath);
+          }
+        }
+      };
+
+      processDirectory(absoluteStaticPath);
     }
 
     const elapsed = ((Date.now() - startTime) / 1000).toFixed(2);
