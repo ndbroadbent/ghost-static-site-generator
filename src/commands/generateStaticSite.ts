@@ -14,7 +14,6 @@ const previewGeneratedSite = require('./previewGeneratedSite');
 
 async function generateStaticSite(): Promise<void> {
   const startTime = Date.now();
-  console.time('Site generated in');
 
   const absoluteStaticPath = path.resolve(
     process.cwd(),

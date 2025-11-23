@@ -77,10 +77,12 @@ export class ConcurrentCrawler {
     // 1. URLs with extensions
     // 2. URLs in /content/files/ (raw file downloads)
     // 3. URLs in /content/media/ (videos, etc.)
+    // 4. URLs in /content/images/ (thumbnails, etc.)
     if (
       !path.extname(pathname) &&
       !pathname.startsWith('content/files/') &&
-      !pathname.startsWith('content/media/')
+      !pathname.startsWith('content/media/') &&
+      !pathname.startsWith('content/images/')
     ) {
       pathname += '/index.html';
     }
@@ -164,6 +166,8 @@ export class ConcurrentCrawler {
   }
 
   private async crawlUrl(url: string, referrer?: string): Promise<void> {
+    url = this.normalizeUrl(url);
+
     if (this.crawled.has(url) || this.inProgress.has(url)) {
       return;
     }
@@ -311,19 +315,26 @@ export class ConcurrentCrawler {
         }
 
         // Store in new graph
+        const normalizedOutLinks = Array.from(
+          new Set(outLinks.map((l) => this.normalizeUrl(l))),
+        );
+        const normalizedResources = Array.from(
+          new Set(resources.map((l) => this.normalizeUrl(l))),
+        );
+
         this.newGraph.set(url, {
-          outLinks: Array.from(new Set(outLinks)),
-          resources: Array.from(new Set(resources)),
+          outLinks: normalizedOutLinks,
+          resources: normalizedResources,
         });
 
         // Report changes if there was an old node
         if (oldNode) {
           const oldAllLinks = [...oldNode.outLinks, ...oldNode.resources];
-          const newAllLinks = [...outLinks, ...resources];
+          const newAllLinks = [...normalizedOutLinks, ...normalizedResources];
           const oldSet = new Set(oldAllLinks);
           const newSet = new Set(newAllLinks);
-          const added = newAllLinks.filter(link => !oldSet.has(link));
-          const removed = oldAllLinks.filter(link => !newSet.has(link));
+          const added = newAllLinks.filter((link) => !oldSet.has(link));
+          const removed = oldAllLinks.filter((link) => !newSet.has(link));
 
           if (added.length > 0) {
             console.log(`  + Added ${added.length} links`);
@@ -334,7 +345,7 @@ export class ConcurrentCrawler {
         }
 
         // Add new links to queue
-        [...outLinks, ...resources].forEach((link) => {
+        [...normalizedOutLinks, ...normalizedResources].forEach((link) => {
           if (!this.crawled.has(link) && !this.inProgress.has(link)) {
             this.queue.add(link);
           }
@@ -357,6 +368,7 @@ export class ConcurrentCrawler {
   }
 
   public async crawl(startUrl: string): Promise<void> {
+    startUrl = this.normalizeUrl(startUrl);
     console.log(`\nStarting crawl from ${startUrl}`);
     console.log(`Concurrency: ${this.options.concurrency}\n`);
 
@@ -443,12 +455,15 @@ export class ConcurrentCrawler {
 
   public registerKnownValidUrls(urls: string[]): void {
     console.log(`Registering ${urls.length} known valid URLs from sitemap/explicit list\n`);
-    urls.forEach(url => this.knownValidUrls.add(url));
+    urls.forEach((url) => this.knownValidUrls.add(this.normalizeUrl(url)));
   }
 
   public async crawlAdditionalUrls(urls: string[]): Promise<void> {
+    const normalizedUrls = urls.map((u) => this.normalizeUrl(u));
     // Filter out already crawled URLs
-    const uncrawled = urls.filter(url => !this.crawled.has(url) && !this.inProgress.has(url));
+    const uncrawled = normalizedUrls.filter(
+      (url) => !this.crawled.has(url) && !this.inProgress.has(url),
+    );
 
     if (uncrawled.length === 0) {
       return;
@@ -562,6 +577,37 @@ export class ConcurrentCrawler {
     return files;
   }
 
+  private normalizeUrl(url: string): string {
+    try {
+      const urlObj = new URL(url);
+      let pathname = urlObj.pathname;
+
+      // Remove index.html
+      if (pathname.endsWith('/index.html')) {
+        pathname = pathname.substring(0, pathname.length - 10);
+      } else if (pathname === '/index.html') {
+        pathname = '/';
+      }
+
+      // Check for extension-less and not in excluded paths
+      const relativePath = pathname.startsWith('/') ? pathname.substring(1) : pathname;
+      const hasExtension = !!path.extname(pathname);
+      const isExcluded =
+        relativePath.startsWith('content/files/') ||
+        relativePath.startsWith('content/media/') ||
+        relativePath.startsWith('content/images/');
+
+      if (!pathname.endsWith('/') && !hasExtension && !isExcluded) {
+        pathname += '/';
+      }
+
+      urlObj.pathname = pathname;
+      return urlObj.href;
+    } catch (e) {
+      return url;
+    }
+  }
+
   private filePathToUrl(filePath: string): string | null {
     try {
       // Get relative path from static directory
@@ -617,7 +663,18 @@ export class ConcurrentCrawler {
       }
 
       // Ensure trailing slash for directory-like URLs (Ghost convention)
-      if (!urlPath.endsWith('/') && !path.extname(urlPath)) {
+      // But skip for files in content/files/ or content/media/ or content/images/
+      const checkPath = urlPath.startsWith('/') ? urlPath.substring(1) : urlPath;
+      const isExcluded =
+        checkPath.startsWith('content/files/') ||
+        checkPath.startsWith('content/media/') ||
+        checkPath.startsWith('content/images/');
+
+      if (
+        !urlPath.endsWith('/') &&
+        !path.extname(urlPath) &&
+        !isExcluded
+      ) {
         urlPath += '/';
       }
 
