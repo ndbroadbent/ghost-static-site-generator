@@ -62,10 +62,17 @@
                 this.page.identifier = "ghost-{{comment_id}}"
             };
             (function() {
-            var d = document, s = d.createElement('script');
-            s.src = 'https://madebynathan.disqus.com/embed.js';
-            s.setAttribute('data-timestamp', +new Date());
-            (d.head || d.body).appendChild(s);
+                try {
+                    var d = document, s = d.createElement('script');
+                    s.src = 'https://madebynathan.disqus.com/embed.js';
+                    s.setAttribute('data-timestamp', +new Date());
+                    s.onerror = function() {
+                        console.warn('Disqus failed to load (likely due to adblocker).');
+                    };
+                    (d.head || d.body).appendChild(s);
+                } catch (e) {
+                    console.warn('Disqus initialization failed:', e);
+                }
             })();
         </script>
         <noscript>Please enable JavaScript to view the <a href="https://disqus.com/?ref_noscript">comments powered by Disqus.</a></noscript>
