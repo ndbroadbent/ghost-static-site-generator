@@ -34,7 +34,7 @@ if [ $? -eq 0 ]; then
     
     echo ""
     echo "🚀 Theme deployed and Ghost restarted!"
-    echo "Visit https://madebynathan.com to see your changes"
+    echo "Visit https://blog.home.ndbroadbent.com/ to see your changes"
 else
     echo "❌ Deployment failed!"
     exit 1
