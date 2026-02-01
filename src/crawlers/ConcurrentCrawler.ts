@@ -622,6 +622,7 @@ export class ConcurrentCrawler {
         relativePath === '.gitignore' ||
         relativePath === 'content/files/2024/12/deskew' || // Binary file, not a directory
         relativePath.startsWith('sudoblock/') ||
+        relativePath.startsWith('2026/02/02/world-history-of-value/') ||
         relativePath.startsWith('.git/') ||
         relativePath.startsWith('logs/') ||
         (relativePath.endsWith('.txt') && !relativePath.includes('/')) ||
