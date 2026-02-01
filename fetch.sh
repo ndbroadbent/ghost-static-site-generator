@@ -14,9 +14,9 @@ cp pubkey_38E63C0A.txt static/
 cp -R sudoblock static/
 
 # Replace world history of value stub page with actual visualization
-rm -rf static/2026/02/02/world-history-of-value
-mkdir -p static/2026/02/02/world-history-of-value
-cp -R /Users/ndbroadbent/code/world_history_of_value/dist/* static/2026/02/02/world-history-of-value/
+rm -rf static/2026/02/01/world-history-of-value
+mkdir -p static/2026/02/01/world-history-of-value
+cp -R /Users/ndbroadbent/code/world_history_of_value/dist/* static/2026/02/01/world-history-of-value/
 
 # Smoke test: ensure no blog.home.ndbroadbent.com references remain
 echo "Running smoke test for remaining blog.home.ndbroadbent.com references..."
