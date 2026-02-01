@@ -11,12 +11,13 @@ node src/index.js --domain https://blog.home.ndbroadbent.com --productionDomain 
 
 echo madebynathan.com > static/CNAME
 cp pubkey_38E63C0A.txt static/
-cp -R sudoblock static/
-
 # Replace world history of value stub page with actual visualization
 rm -rf static/2026/02/01/world-history-of-value
 mkdir -p static/2026/02/01/world-history-of-value
 cp -R /Users/ndbroadbent/code/world_history_of_value/dist/* static/2026/02/01/world-history-of-value/
+
+# Inject Plausible analytics into all HTML files
+python3 scripts/inject_analytics.py static
 
 # Smoke test: ensure no blog.home.ndbroadbent.com references remain
 echo "Running smoke test for remaining blog.home.ndbroadbent.com references..."
@@ -26,5 +27,16 @@ if rg -q "blog\.home\.ndbroadbent" static; then
   exit 1
 else
   echo "✓ Smoke test passed: no blog.home.ndbroadbent.com references found"
+fi
+
+# Validation: ensure all HTML pages include Plausible analytics
+echo "Validating Plausible analytics script inclusion..."
+MISSING_ANALYTICS=$(find static -name "*.html" -type f ! -path "static/rss/*" -exec grep -L "pa-BcRrHMb-WDJL_dgiM5A81" {} \;)
+if [ -n "$MISSING_ANALYTICS" ]; then
+  echo "❌ ERROR: The following HTML files are missing Plausible analytics:"
+  echo "$MISSING_ANALYTICS" | head -20
+  exit 1
+else
+  echo "✓ All HTML pages include Plausible analytics"
 fi
 
