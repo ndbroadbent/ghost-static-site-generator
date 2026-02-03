@@ -1,0 +1,10 @@
+{
+  "overrides": [
+    {
+      "source": "world_history_of_value/index.html",
+      "destination": "2026/02/01/world-history-of-value/index.html",
+      "overwrites_existing": true,
+      "description": "World History of Value - custom visualization app"
+    }
+  ]
+}
