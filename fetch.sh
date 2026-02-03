@@ -12,6 +12,19 @@ node src/index.js --domain https://blog.home.ndbroadbent.com --productionDomain 
 echo madebynathan.com > static/CNAME
 cp pubkey_38E63C0A.txt static/
 
+# Update static_overrides from source repos (when available)
+# This keeps static_overrides/ as the checked-in source of truth
+WHOV_SOURCE="/Users/ndbroadbent/code/world_history_of_value/dist"
+WHOV_OVERRIDE="static_overrides/world_history_of_value"
+if [ -d "$WHOV_SOURCE" ]; then
+  echo "Updating static_overrides from World History of Value source repo..."
+  mkdir -p "$WHOV_OVERRIDE"
+  cp "$WHOV_SOURCE/index.html" "$WHOV_OVERRIDE/index.html"
+  echo "  ✓ Copied index.html to $WHOV_OVERRIDE/"
+else
+  echo "World History of Value source not found at $WHOV_SOURCE (using checked-in override)"
+fi
+
 # Inject Plausible analytics into all HTML files
 python3 scripts/inject_analytics.py static
 
