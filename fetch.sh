@@ -11,10 +11,19 @@ node src/index.js --domain https://blog.home.ndbroadbent.com --productionDomain 
 
 echo madebynathan.com > static/CNAME
 cp pubkey_38E63C0A.txt static/
-# Replace world history of value stub page with actual visualization
-rm -rf static/2026/02/01/world-history-of-value
-mkdir -p static/2026/02/01/world-history-of-value
-cp -R /Users/ndbroadbent/code/world_history_of_value/dist/* static/2026/02/01/world-history-of-value/
+# World History of Value visualization
+# Only update if source repo exists; otherwise preserve existing files in static/
+WHOV_SOURCE="/Users/ndbroadbent/code/world_history_of_value/dist"
+WHOV_DEST="static/2026/02/01/world-history-of-value"
+if [ -d "$WHOV_SOURCE" ]; then
+  echo "Updating World History of Value from source repo..."
+  rm -rf "$WHOV_DEST"
+  mkdir -p "$WHOV_DEST"
+  cp -R "$WHOV_SOURCE"/* "$WHOV_DEST"/
+else
+  echo "World History of Value source not found at $WHOV_SOURCE"
+  echo "Preserving existing files in $WHOV_DEST (if any)"
+fi
 
 # Inject Plausible analytics into all HTML files
 python3 scripts/inject_analytics.py static
