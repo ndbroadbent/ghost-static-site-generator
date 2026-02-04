@@ -25,14 +25,15 @@ else
   echo "World History of Value source not found at $WHOV_SOURCE (using checked-in override)"
 fi
 
-# Inject Plausible analytics into all HTML files
-python3 scripts/inject_analytics.py static
-
 # Apply static overrides (custom pages that replace Ghost stubs)
-# This must run AFTER scrape but BEFORE validation
+# This must run AFTER scrape but BEFORE analytics injection
 echo ""
 echo "=== Applying static overrides ==="
 python3 scripts/apply_static_overrides.py
+
+# Inject Plausible analytics into all HTML files
+# This must run AFTER static overrides so analytics are added to overridden pages
+python3 scripts/inject_analytics.py static
 
 # Smoke test: ensure no blog.home.ndbroadbent.com references remain
 echo ""
@@ -59,12 +60,13 @@ fi
 
 # Validation: ensure no stub placeholders remain
 # These indicate a post-build step failed to replace Ghost content
+# Exclude rss/ since RSS feeds naturally mirror Ghost content including stubs
 echo "Checking for unreplaced stub placeholders..."
 STUB_MESSAGE="This content should have been replaced by a post-build step"
-if rg -q "$STUB_MESSAGE" static; then
+if rg -q "$STUB_MESSAGE" static -g '!**/rss/**'; then
   echo "❌ ERROR: Found unreplaced stub placeholder(s)!"
   echo "   The following files contain content that should have been replaced:"
-  rg -l "$STUB_MESSAGE" static
+  rg -l "$STUB_MESSAGE" static -g '!**/rss/**'
   echo ""
   echo "   This usually means:"
   echo "   1. A static override is missing from static_overrides/"
